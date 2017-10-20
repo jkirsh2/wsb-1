@@ -1,1 +1,4 @@
 credentials.txt
+rds_credentials.txt
+*.pyc
+.idea
