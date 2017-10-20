@@ -186,7 +186,7 @@ class portfolio_constructor(object):
                     (pdict[day])['pct_change'] = (p1 - p0) / p0
                 except:
 
-                    def drop_ticker(self, df, t):
+                    def drop_ticker(df, t):
                         df.drop([t], inplace=True)
                         df['weight'] = df['weight'] / df['weight'].sum()
                         return df
