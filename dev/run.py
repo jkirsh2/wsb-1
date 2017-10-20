@@ -3,7 +3,7 @@ from get_stats import Post
 from scrape_nodb import SubScraper
 
 start_date = '2017-01-01'
-end_date = '2017-01-31'
+end_date = '2017-10-01'
 subr = 'wallstreetbets'
 
 def make_ticker_list(filters = []):
@@ -20,7 +20,7 @@ def process_submission(s, ticker_list):
 if __name__ == '__main__':
     result = []
     ticker_list = make_ticker_list()
-    s = SubScraper('/home/andrew/gitrepos/wsb/dev/credentials.txt')
+    s = SubScraper('C:/Users/Owner.DESKTOP-UT1NOGO/Desktop/python/wsb-master/RETF/credentials.txt')
     submissions = s.get_submissions_between(subr, start_date, end_date)
 
     for s in submissions:

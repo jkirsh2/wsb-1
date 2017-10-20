@@ -1,3 +1,8 @@
+"""Pull subreddit submissions
+
+Authors: Casey Emmons, Andrew Mehrmann
+"""
+
 import praw
 import time
 import datetime

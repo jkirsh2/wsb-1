@@ -1,3 +1,8 @@
+"""Match ticker symbols in text
+
+Author: Andrew Mehrmann
+"""
+
 from collections import Counter
 from random import shuffle
 
