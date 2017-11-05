@@ -1,26 +1,13 @@
-"""Create subreddit index
-
-Author: Joe Kirsh
-"""
-
+from run import *
 import holidays
 import datetime as dt
+import requests
+import json
 from pandas_datareader import data
 import time
-import pandas as pd
-from .get_stats import Post
-from ..reddit_scraper.scrape import SubScraper
+import matplotlib.pyplot as plt
 
 
-def make_ticker_list(filters = []):
-    raw = list(pd.read_csv('data/nyse.csv').Symbol) + list(pd.read_csv('data/nasdaq.csv').Symbol)
-    without_bs = [x.strip() for x in raw if '^' not in x]
-    return [x for x in without_bs if x not in filters]
-
-def process_submission(s, ticker_list):
-    one_p = Post(s)
-    one_p.get_stats(ticker_list, dollar_sign=True)
-    return (one_p.date, one_p.ticker, one_p.sentiment, one_p.exposure)
 
 def next_business_day(date):
     us_holidays = holidays.US()
@@ -36,7 +23,7 @@ def previous_business_day(date):
         previous_day = previous_business_day(previous_day)
     return previous_day
 
-class portfolio_constructor(object):
+class portfolio_contructor(object):
     def __init__(self, subr, cred_path, save_dir=None, cutoff=0.01):
         self.subr      = subr
         self.cred_path = cred_path
@@ -71,16 +58,18 @@ class portfolio_constructor(object):
                 time.sleep(1)
 
         df = pd.DataFrame(result, columns = ['date', 'ticker', 'sentiment', 'exposure'])
-        df = df.groupby(['date', 'ticker']).agg({'sentiment':'mean', 'exposure':'sum'}).reset_index()
+        df['weighted_exposure'] = df['sentiment'] * df['exposure']
+        df['abs_weighted_exposure'] = df['weighted_exposure'].abs()
+        df = df.groupby(['date', 'ticker']).agg({'weighted_exposure':'sum', 'abs_weighted_exposure':'sum'}).reset_index()
         df_totalexposure = (df
                             .groupby('date')
-                            .agg({'exposure':sum})
-                            .rename(columns = {'exposure':'daily_exposure'})
+                            .agg({'abs_weighted_exposure':sum})
+                            .rename(columns = {'abs_weighted_exposure':'daily_exposure'})
                             .reset_index()
                             )
 
         df = df.merge(df_totalexposure, on='date', how='left')
-        df['exposure'] = df['exposure']/df['daily_exposure']
+        df['exposure'] = df['weighted_exposure']/df['daily_exposure']
         df = df.drop('daily_exposure', axis=1)
 
         if self.save_dir is not None:
@@ -102,7 +91,7 @@ class portfolio_constructor(object):
                 e = rdf[(rdf['ticker'] == t) & (rdf['date'] == d)]
 
                 if len(e) > 0:
-                    tdf.loc[d, t] = e['exposure'].iloc[0]
+                    tdf.loc[d, t] = e['weighted_exposure'].iloc[0]
                 else:
                     tdf.loc[d, t] = 0
         
@@ -119,7 +108,7 @@ class portfolio_constructor(object):
 
     def drop_ticker(self, s, t):
         s.drop([t], inplace=True)
-        s = s / s.sum()
+        s = s / s.abs().sum()
         return s
 
     def drop_tickers(self, pdict, dl):
@@ -197,3 +186,30 @@ class portfolio_constructor(object):
 
         return pdict, idict
 
+
+
+if __name__ == '__main__':
+    subr = 'wallstreetbets'
+    cp   = 'C:/Users/Owner.DESKTOP-UT1NOGO/Desktop/python/wsb-master/dev/credentials.txt'
+    pc   = portfolio_contructor(subr, cp, cutoff=0.0001)
+    
+    d0 = dt.datetime(2017, 9, 20)
+    d1 = dt.datetime(2017, 10, 3)
+
+    pdict   = pc.get_portfolio_dict(d0, d1, 10)
+    tlist   = pc.get_ticker_list(pdict)
+
+    print(tlist)
+    cpdict, dl = pc.get_close_price_dict(d0, d1, tlist)
+
+    if len(dl) > 0:
+        pdict = pc.drop_tickers(pdict, dl)
+
+    pdict, idict = pc.get_portfolio_change(pdict, cpdict)
+
+    i = [69]
+    for d in idict:
+        i.append(i[-1] * (idict[d] + 1))
+
+    plt.plot(list(idict.keys()), i[1:])
+    plt.show()
